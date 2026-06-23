@@ -22,7 +22,7 @@ export default function Sidebar({ currentPage, onNavigate }: Props) {
             <TrendingUp size={16} className="text-white" />
           </div>
           <div>
-            <div className="text-white font-bold text-sm leading-tight">ProcureIQ</div>
+            <div className="text-white font-bold text-sm leading-tight">Baringa Procurement Consulting</div>
             <div className="text-slate-400 text-xs">Cost Optimisation</div>
           </div>
         </div>
