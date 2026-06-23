@@ -130,7 +130,7 @@ export default function InitiativeTracker() {
         <table className="w-full text-xs">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
-              {['', 'Programme', 'Category', 'Owner', 'Status', 'RAG', 'Target $M', 'Achieved $M', 'Progress', 'End Date', ''].map(h => (
+              {['', 'Programme', 'Category', 'Owner', 'Status', 'RAG', 'Target $M', 'Achieved $M', 'Progress', 'End Date'].map(h => (
                 <th key={h} className="text-left text-gray-500 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -145,9 +145,16 @@ export default function InitiativeTracker() {
                 <Fragment key={init.id}>
                   <tr className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${isOpen ? 'bg-blue-50/30' : ''}`}>
                     <td className="px-4 py-3">
-                      <button onClick={() => setExpanded(isOpen ? null : init.id)} className="text-gray-400 hover:text-gray-600">
-                        {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => setExpanded(isOpen ? null : init.id)} className="text-gray-400 hover:text-gray-600">
+                          {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                        <button onClick={e => { e.stopPropagation(); openEdit(init); }}
+                          title="Edit initiative"
+                          className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors font-medium text-xs">
+                          <Pencil size={12} /> Edit
+                        </button>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-gray-800">{init.name}</p>
@@ -189,18 +196,11 @@ export default function InitiativeTracker() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-500">{fmtDate(init.endDate)}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={e => { e.stopPropagation(); openEdit(init); }}
-                        title="Edit initiative"
-                        className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors font-medium text-xs">
-                        <Pencil size={12} /> Edit
-                      </button>
-                    </td>
                   </tr>
 
                   {isOpen && (
                     <tr className="bg-slate-50 border-b border-gray-100">
-                      <td colSpan={11} className="px-6 py-5">
+                      <td colSpan={10} className="px-6 py-5">
                         <div className="grid grid-cols-3 gap-5">
                           <div className="col-span-1">
                             <p className="text-xs font-semibold text-gray-700 mb-1">Description</p>
