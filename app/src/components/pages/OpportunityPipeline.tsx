@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, X, ChevronRight } from 'lucide-react';
+import { Plus, X, ChevronRight, Pencil } from 'lucide-react';
 import { defaultOpportunities } from '../../data/sampleData';
 import { fmt$, fmtPct } from '../../utils/formatters';
 import type { Opportunity, OpportunityStatus, Complexity } from '../../types';
@@ -38,10 +38,32 @@ const BUS = ['Global', 'North America', 'EMEA', 'APAC', 'LATAM', 'Operations', '
 export default function OpportunityPipeline() {
   const [opps, setOpps] = useState<Opportunity[]>(defaultOpportunities);
   const [selected, setSelected] = useState<Opportunity | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Omit<Opportunity, 'id' | 'createdDate'>>(EMPTY_OPP);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState<Omit<Opportunity, 'id' | 'createdDate'>>(EMPTY_OPP);
 
   const pipelineTotal = opps.filter(o => o.status !== 'Closed').reduce((s, o) => s + o.potentialSaving, 0);
+
+  const openEdit = (opp: Opportunity) => {
+    setEditForm({
+      title: opp.title, category: opp.category, businessUnit: opp.businessUnit,
+      currentSpend: opp.currentSpend, potentialSaving: opp.potentialSaving,
+      savingPercent: opp.savingPercent, complexity: opp.complexity,
+      timeToRealize: opp.timeToRealize, status: opp.status,
+      owner: opp.owner, description: opp.description,
+    });
+    setEditing(true);
+  };
+
+  const saveEdit = () => {
+    if (!editForm.title.trim() || !selected) return;
+    const pct = editForm.currentSpend > 0 ? (editForm.potentialSaving / editForm.currentSpend) * 100 : 0;
+    const updated = { ...selected, ...editForm, savingPercent: pct };
+    setOpps(prev => prev.map(o => o.id === selected.id ? updated : o));
+    setSelected(updated);
+    setEditing(false);
+  };
 
   const advance = (opp: Opportunity) => {
     const idx = STAGES.indexOf(opp.status);
@@ -141,50 +163,128 @@ export default function OpportunityPipeline() {
             <div className="flex items-start justify-between p-5 border-b border-gray-100">
               <div>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STAGE_HEADER[selected.status]}`}>{selected.status}</span>
-                <h2 className="text-base font-bold text-gray-900 mt-1">{selected.title}</h2>
+                <h2 className="text-base font-bold text-gray-900 mt-1">{editing ? 'Edit Opportunity' : selected.title}</h2>
               </div>
-              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+              <div className="flex items-center gap-1">
+                {!editing && (
+                  <button onClick={() => openEdit(selected)}
+                    className="text-gray-400 hover:text-blue-600 p-1 rounded" title="Edit">
+                    <Pencil size={15} />
+                  </button>
+                )}
+                <button onClick={() => { setSelected(null); setEditing(false); }} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+              </div>
             </div>
-            <div className="p-5 space-y-4">
-              <p className="text-sm text-gray-600">{selected.description}</p>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  ['Category', selected.category],
-                  ['Business Unit', selected.businessUnit],
-                  ['Owner', selected.owner],
-                  ['Complexity', selected.complexity],
-                  ['Current Spend', fmt$(selected.currentSpend)],
-                  ['Time to Realise', selected.timeToRealize],
-                ].map(([k, v]) => (
-                  <div key={k} className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-400">{k}</p>
-                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{v}</p>
+
+            {editing ? (
+              <>
+                <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Title *</label>
+                    <input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
-                ))}
-              </div>
-              <div className="bg-emerald-50 rounded-lg p-4 flex items-center gap-4">
-                <div>
-                  <p className="text-xs text-emerald-600">Potential Saving</p>
-                  <p className="text-2xl font-bold text-emerald-700">{fmt$(selected.potentialSaving)}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">Category</label>
+                      <select value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
+                        className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">Business Unit</label>
+                      <select value={editForm.businessUnit} onChange={e => setEditForm(f => ({ ...f, businessUnit: e.target.value }))}
+                        className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        {BUS.map(b => <option key={b}>{b}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">Current Spend ($M)</label>
+                      <input type="number" value={editForm.currentSpend || ''} onChange={e => setEditForm(f => ({ ...f, currentSpend: parseFloat(e.target.value) || 0 }))}
+                        className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">Potential Saving ($M)</label>
+                      <input type="number" value={editForm.potentialSaving || ''} onChange={e => setEditForm(f => ({ ...f, potentialSaving: parseFloat(e.target.value) || 0 }))}
+                        className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">Complexity</label>
+                      <select value={editForm.complexity} onChange={e => setEditForm(f => ({ ...f, complexity: e.target.value as Complexity }))}
+                        className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option>Low</option><option>Medium</option><option>High</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">Time to Realise</label>
+                      <select value={editForm.timeToRealize} onChange={e => setEditForm(f => ({ ...f, timeToRealize: e.target.value }))}
+                        className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        {['1-3 months', '3-6 months', '6-9 months', '9-12 months', '12-18 months', '18+ months'].map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Owner</label>
+                    <input value={editForm.owner} onChange={e => setEditForm(f => ({ ...f, owner: e.target.value }))}
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Description</label>
+                    <textarea value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} rows={3}
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-emerald-600">Saving %</p>
-                  <p className="text-2xl font-bold text-emerald-700">{fmtPct(selected.savingPercent)}</p>
+                <div className="flex justify-end gap-2 px-5 pb-5">
+                  <button onClick={() => setEditing(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+                  <button onClick={saveEdit} disabled={!editForm.title.trim()}
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">Save Changes</button>
                 </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between px-5 pb-5">
-              <button onClick={() => {
-                setOpps(prev => prev.filter(o => o.id !== selected.id));
-                setSelected(null);
-              }} className="text-xs text-red-500 hover:text-red-700 font-medium">Remove</button>
-              {selected.status !== 'Realized' && selected.status !== 'Closed' && (
-                <button onClick={() => advance(selected)}
-                  className="flex items-center gap-1.5 bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700">
-                  Advance Stage <ChevronRight size={14} />
-                </button>
-              )}
-            </div>
+              </>
+            ) : (
+              <>
+                <div className="p-5 space-y-4">
+                  <p className="text-sm text-gray-600">{selected.description}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      ['Category', selected.category],
+                      ['Business Unit', selected.businessUnit],
+                      ['Owner', selected.owner],
+                      ['Complexity', selected.complexity],
+                      ['Current Spend', fmt$(selected.currentSpend)],
+                      ['Time to Realise', selected.timeToRealize],
+                    ].map(([k, v]) => (
+                      <div key={k} className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs text-gray-400">{k}</p>
+                        <p className="text-sm font-semibold text-gray-800 mt-0.5">{v}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-emerald-50 rounded-lg p-4 flex items-center gap-4">
+                    <div>
+                      <p className="text-xs text-emerald-600">Potential Saving</p>
+                      <p className="text-2xl font-bold text-emerald-700">{fmt$(selected.potentialSaving)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-emerald-600">Saving %</p>
+                      <p className="text-2xl font-bold text-emerald-700">{fmtPct(selected.savingPercent)}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between px-5 pb-5">
+                  <button onClick={() => {
+                    setOpps(prev => prev.filter(o => o.id !== selected.id));
+                    setSelected(null);
+                  }} className="text-xs text-red-500 hover:text-red-700 font-medium">Remove</button>
+                  {selected.status !== 'Realized' && selected.status !== 'Closed' && (
+                    <button onClick={() => advance(selected)}
+                      className="flex items-center gap-1.5 bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700">
+                      Advance Stage <ChevronRight size={14} />
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
