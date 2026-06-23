@@ -192,8 +192,8 @@ export default function InitiativeTracker() {
                     <td className="px-4 py-3">
                       <button onClick={e => { e.stopPropagation(); openEdit(init); }}
                         title="Edit initiative"
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                        <Pencil size={13} />
+                        className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors font-medium text-xs">
+                        <Pencil size={12} /> Edit
                       </button>
                     </td>
                   </tr>
