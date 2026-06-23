@@ -2,7 +2,7 @@ import { useState, Fragment } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { Plus, ChevronDown, ChevronUp, X, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, X, CheckCircle, Clock, AlertTriangle, Pencil } from 'lucide-react';
 import { defaultInitiatives } from '../../data/sampleData';
 import { fmt$, fmtPct, fmtDate } from '../../utils/formatters';
 import type { Initiative, InitiativeStatus, RAGStatus, MilestoneStatus } from '../../types';
@@ -42,8 +42,21 @@ export default function InitiativeTracker() {
   const [inits, setInits] = useState<Initiative[]>(defaultInitiatives);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Initiative, 'id' | 'milestones' | 'savingsProfile'>>(EMPTY);
   const [filterStatus, setFilterStatus] = useState<string>('All');
+
+  const openEdit = (init: Initiative) => {
+    setEditingId(init.id);
+    setForm({
+      name: init.name, category: init.category, businessUnit: init.businessUnit,
+      owner: init.owner, sponsor: init.sponsor, targetSaving: init.targetSaving,
+      actualSaving: init.actualSaving, status: init.status, ragStatus: init.ragStatus,
+      startDate: init.startDate, endDate: init.endDate, description: init.description,
+    });
+  };
+
+  const closeModal = () => { setAdding(false); setEditingId(null); setForm(EMPTY); };
 
   const totals = {
     target: inits.reduce((s, i) => s + i.targetSaving, 0),
@@ -58,17 +71,20 @@ export default function InitiativeTracker() {
   const updateStatus = (id: string, status: InitiativeStatus) =>
     setInits(prev => prev.map(i => i.id === id ? { ...i, status } : i));
 
-  const saveNew = () => {
+  const saveModal = () => {
     if (!form.name.trim()) return;
-    setInits(prev => [...prev, {
-      ...form,
-      id: `init-${Date.now()}`,
-      milestones: [],
-      savingsProfile: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-        .map(month => ({ month, target: 0, actual: 0 })),
-    }]);
-    setAdding(false);
-    setForm(EMPTY);
+    if (editingId) {
+      setInits(prev => prev.map(i => i.id === editingId ? { ...i, ...form } : i));
+    } else {
+      setInits(prev => [...prev, {
+        ...form,
+        id: `init-${Date.now()}`,
+        milestones: [],
+        savingsProfile: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+          .map(month => ({ month, target: 0, actual: 0 })),
+      }]);
+    }
+    closeModal();
   };
 
   const visible = filterStatus === 'All' ? inits : inits.filter(i => i.status === filterStatus);
@@ -114,7 +130,7 @@ export default function InitiativeTracker() {
         <table className="w-full text-xs">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
-              {['', 'Programme', 'Category', 'Owner', 'Status', 'RAG', 'Target $M', 'Achieved $M', 'Progress', 'End Date'].map(h => (
+              {['', 'Programme', 'Category', 'Owner', 'Status', 'RAG', 'Target $M', 'Achieved $M', 'Progress', 'End Date', ''].map(h => (
                 <th key={h} className="text-left text-gray-500 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -173,11 +189,18 @@ export default function InitiativeTracker() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-500">{fmtDate(init.endDate)}</td>
+                    <td className="px-4 py-3">
+                      <button onClick={e => { e.stopPropagation(); openEdit(init); }}
+                        title="Edit initiative"
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                        <Pencil size={13} />
+                      </button>
+                    </td>
                   </tr>
 
                   {isOpen && (
                     <tr className="bg-slate-50 border-b border-gray-100">
-                      <td colSpan={10} className="px-6 py-5">
+                      <td colSpan={11} className="px-6 py-5">
                         <div className="grid grid-cols-3 gap-5">
                           <div className="col-span-1">
                             <p className="text-xs font-semibold text-gray-700 mb-1">Description</p>
@@ -238,12 +261,12 @@ export default function InitiativeTracker() {
       </div>
 
       {/* Add modal */}
-      {adding && (
+      {(adding || editingId) && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h2 className="font-bold text-gray-900">New Initiative</h2>
-              <button onClick={() => setAdding(false)} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+              <h2 className="font-bold text-gray-900">{editingId ? 'Edit Initiative' : 'New Initiative'}</h2>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
             </div>
             <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
               <div>
@@ -305,9 +328,11 @@ export default function InitiativeTracker() {
               </div>
             </div>
             <div className="flex justify-end gap-2 px-5 pb-5">
-              <button onClick={() => setAdding(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={saveNew} disabled={!form.name.trim()}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">Save Initiative</button>
+              <button onClick={closeModal} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={saveModal} disabled={!form.name.trim()}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
+                {editingId ? 'Save Changes' : 'Save Initiative'}
+              </button>
             </div>
           </div>
         </div>
